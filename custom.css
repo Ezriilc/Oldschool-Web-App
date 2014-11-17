@@ -1,0 +1,204 @@
+/*
+Color 1 (Dark): #6c823d
+Color 2 (Lite): #D5FF78
+Contrast : black
+*/
+
+html,.html{
+    background-color:#6c823d;
+    background-image:none;
+    background-position:center top;
+    background-repeat:repeat;
+    background-attachment:fixed;
+}
+body,.body{
+    background-color:transparent;
+    background-image:url(graphics/trans-mask-white.png);
+    background-position:center 66%;
+    background-repeat:repeat-x;
+    background-attachment:fixed;
+    margin:10px auto;
+    max-width:1024px;
+    font-family:monospace;
+}
+
+/* TEXT & LINKS (:link means UN-visited only so it's not used.) */
+h1,h2,h3,h4,h5,h6{
+    font-family:Times New Roman, Georgia;
+}
+body,.body,textarea,a,a:visited{
+    color:black;
+}
+a:hover, a:focus, a:active{
+    background-color:black;
+    color:white;
+}
+
+/* BORDERS (Blocks that lack defaults, color only. */
+header,section,.section,footer,address,blockquote,dd,dl,dt,div,dl,form,
+h1,h2,h3,h4,h5,h6,legend,li,noscript,ol,output,p,pre,table,ul{
+    border-color:#6c823d;
+}
+
+/* Sections, headers & footers, generic */
+header,.section,footer{
+    background-color:transparent;
+    background-image:url(graphics/trans-mask-white.png); /* Replace with base64? */
+    background-repeat:repeat-x;
+}
+header,footer{
+    font-family:Times New Roman, Georgia;
+}
+header{}
+section{
+    background-position:center 50%;
+    border-width:1px;
+    border-radius:6px;
+    margin:5px;
+    padding:5px;
+    font-family:Arial, sans-serif;
+}
+footer{}
+
+.section, .section textarea, .section a, .section a:visited,
+input[type=text],
+input[type=password],
+input[type=file],
+input[type=image],
+select,option,textarea{
+    color:black;
+}
+.section a:hover, .section a:focus, .section a:active,
+.section a.active, .section a:visited.active{
+    color:#D5FF78;
+}
+.section a:hover, .section a:focus, .section a:active,
+.section a.active{
+    background-color:#6c823d;
+    border-color:black;
+}
+
+/* HEADERS */
+.section h1,.section h2,.section h3,.section h4,.section h5,.section h6{
+    font-family:Times New Roman, Georgia;
+}
+
+/* BORDERS (Blocks that lack defaults, color only. */
+.section h1,.section h2,.section h3,.section h4,.section h5,.section h6,
+.section ul,.section ol,.section li,.section dl,.section dd,.section dl,.section dt,
+.section address,.section blockquote.section div,.section p,.section pre,.section table,
+.section form,.section legend,.section noscript,.section output, .section .section,
+.section .menu a,.section a.menu{
+    border-color:black;
+}
+#section_1{
+    background-image:none;
+    background-position:center top;
+    background-repeat:repeat-x;
+    background-attachment:scroll;
+}
+#section_2{}
+#section_3{}
+#copyright,#vanity{
+    position:fixed;
+    bottom:-.25em;
+    font-size:xx-small;
+}
+#copyright{ left:0; }
+#vanity{ right:0; }
+
+
+
+/* Menus */
+.menu a,a.menu{
+    font-family:Arial, sans-serif;
+    color:black !important;
+    background-color:#D5FF78;
+}
+.menu a:hover,a.menu:hover,
+.menu a:focus,a.menu:focus,
+.menu a:active,a.menu:active,
+.menu a.active,a.menu.active{
+    background-color:transparent;
+}
+.menu{
+    list-style:none;
+}
+.menu a,a.menu{
+    display:inline-block;
+    background-image:url(graphics/trans-grad-horz-butt-bw-40.png);
+    background-position:center center;
+    background-repeat:repeat-x;
+    border-width:1px;
+    border-style:solid;
+    padding:6px 6px 5px 5px;
+    line-height:.8em;
+    text-decoration:none;
+    font-variant:small-caps;
+}
+.menu a:hover,a.menu:hover,
+.menu a:focus,a.menu:focus,
+.menu a:active,a.menu:active,
+.menu a.active,a.menu.active{
+    position:relative;
+    top:1px;
+    left:1px;
+}
+
+.message{
+    text-align:center;
+    color:white;
+    display:inline-block;
+    padding:.33em;
+}
+.message.success{
+    background-color:green;
+}
+.message.error{
+    background-color:red;
+    padding:1em;
+}
+.message.warn{
+    background-color:yellow;
+    color:black;
+}
+
+/* Columns */
+.half{
+    display:block;
+    width:49%;
+    float:left;
+}
+.t_right{
+    text-align:right;
+    padding-right:2px;
+}
+.t_left{
+    text-align:left;
+    padding-left:2px;
+}
+.a_right{
+    float:right;
+    clear:right;
+}
+.a_left{
+    float:left;
+    clear:left;
+}
+
+.popout{
+    position:relative;
+    display:inline;
+}
+.popout>.box{
+    display:none;
+    position:absolute;
+    right:-1px;
+    bottom:-1px;
+    padding:5px;
+    border-width:1px;
+    border-style:solid;
+}
+.popout:hover>.box{
+    display:block;
+}

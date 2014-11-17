@@ -1,0 +1,117 @@
+html,.html,body{
+    background-position:center center;
+    background-attachment:fixed;
+    margin:0;padding:0;
+    text-align:center;
+    font-size:100%;
+}
+body>*,.body>*,table{
+    margin:auto;
+}
+html,.html,textarea{
+    overflow:auto;
+}
+a{
+    cursor:pointer;
+    text-decoration:underline;
+}
+*:hover,*:focus,*:active,*.active{
+    outline-style:none;
+}
+
+/* BORDERS (ALL that lack defaults, everything BUT color. */
+body,header,section,footer,address,blockquote,dd,dl,dt,div,dl,form,fieldset,label,
+h1,h2,h3,h4,h5,h6,legend,li,noscript,ol,output,p,pre,table,td,ul{
+    border-width:0px;
+    border-style:solid;
+}
+/* Inline, not normally bordered, but here they are. */
+a,span,em,strong,cite,var,i,b,u,s,del,ins,small,sub,sup,dfn,code,samp,kbd,abbr,
+img,td,noscript,bdo,q{}
+
+hr{
+    clear:both;
+    width:100%;
+}
+
+address,dl,ol,ul,p{
+    margin:10px;
+}
+pre,fieldset{
+    margin:1px auto;
+    padding:1px;
+}
+h1,h2,h3,h4,h5,h6{
+    margin:0;
+}
+img{
+    margin:5px;
+}
+table{
+    border-collapse:collapse;
+}
+li{
+    margin:.33em 0;
+}
+li ul, li ol, li dl{
+    margin-top:.25em;
+    margin-bottom:.25em;
+}
+dt{
+    font-style:italic;
+    font-weight:bold;
+}
+dd+dt{
+    margin-top:1em;
+}
+
+section{
+    clear:both;
+    width:auto;
+    text-align:left;
+}
+article img{
+    border-width:2px;
+}
+
+/* BACKGROUNDS, mostly for inputs */
+/* Inputs get new bg, default was white */
+input[type=text],
+input[type=password],
+input[type=file],
+input[type=image],
+select,option,textarea{
+    background-color:transparent;
+    background-image:url(graphics/trans-mask-white.png);
+    background-position:center 33%;
+    background-repeat:repeat-x;
+}
+input[type=text]:hover,
+input[type=text]:focus,
+input[type=text]:active,
+input[type=text].active,
+input[type=password]:hover,
+input[type=password]:focus,
+input[type=password]:active,
+input[type=password].active,    
+input[type=file]:hover,
+input[type=file]:focus,
+input[type=file]:active,
+input[type=file].active,
+input[type=image]:hover,
+input[type=image]:focus,
+input[type=image]:active,
+input[type=image].active,
+select:hover, select:focus, select:active, select.active,
+option:hover, option:focus, option:active, option.active,    
+textarea:hover, textarea:focus, textarea:active, textarea.active{
+    background-position:center 66%;
+}
+
+input[type=text],
+input[type=password],
+input[type=file],
+input[type=image],
+textarea{
+    font-family:monospace;
+}
