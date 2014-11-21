@@ -1,16 +1,15 @@
 <?php
 
 new USER;
-//var_dump(@$_SESSION);
 return USER::$output;
 
 class USER{
     static
-    $db_file = './_gitignore/webapp.sqlite3'
+    $db_file = './_sqlite/webapp.sqlite3'
     ,$users_table = 'users'
     ,$cookies_table = 'cookies'
     ,$visitors_table = 'visitors'
-    ,$from_email = 'admin@locahost' // Valid email required by most servers.
+    ,$from_email = 'admin@localhost' // Valid email required by most servers.
     ,$bcc_from = false // BCC $from_email in all messages.
     ,$pepper = "wouldn't you like to be one too?" // Change this!
     ,$password_min = 8
@@ -363,15 +362,16 @@ ip TEXT NOT NULL
         }
     }
     private function send_email(
-        $to=null
+        $name=null
+        ,$email=null
         ,$subject=null
         ,$message=null
     ){
-        if(!$to OR !$subject OR !$message){return false;}
+        if(!$name OR !$email OR !$subject OR !$message){return false;}
         $from = static::$from_email;
         $eol = "\r\n";
         $boundary = 'MultiPartBoundary_'.uniqid('UID_',true);
-        $to = $to.' <'.$to.'>';
+        $to = $name.' <'.$email.'>';
         $subject = static::$mail_site.' : '.$subject;
         $message = array(
             'This is a multi-part message in MIME format.'
@@ -867,19 +867,20 @@ LIMIT 1
                     }
                     unset($stmt,$result);
                         
-                    if( !empty($user_row) ){
+                    if( ! empty($user_row) ){
                         $_SESSION['recover']['username'] = $user_row['username'];
                         $_SESSION['recover']['email'] = $user_row['email'];
                         $_SESSION['recover']['token'] = $this->rand_salt();
                         $this->send_email(
-                            $_SESSION['recover']['email']
+                            $_SESSION['recover']['username']
+                            ,$_SESSION['recover']['email']
                             ,'Token request.'
-                            ,"A token was requested for this email address.\r\n"
+                            ,$_SESSION['recover']['username'].",\r\n\r\nA token was requested for this email address.\r\n"
                             ."\r\n"
                             ."Token:\r\n"
                             .$_SESSION['recover']['token']."\r\n"
                             ."\r\n"
-                            ."If you didn't trigger this request, please reply here to report a possible hack attempt."
+                            ."If you didn't trigger this request, please reply here to report a possible hack attempt.\r\n"
                         );
                     }
                 break;
@@ -1042,11 +1043,12 @@ LIMIT 1
                         // Email taken.
                         unset($_SESSION['register']);
                         $this->send_email(
-                            $email
+                            'User'
+                            ,$email
                             ,'Token request.'
                             ,"A token was requested for this email address, but it's already registered.\r\n"
                             ."If you need to recover your account, please use the recover form.\r\n"
-                            ."If you didn't trigger this request, please reply here to report a possible hack attempt."
+                            ."If you didn't trigger this request, please reply here to report a possible hack attempt.\r\n"
                         );
                         break;
                     }
@@ -1058,14 +1060,15 @@ LIMIT 1
                     $_SESSION['register']['username'] = $post['username'];
                     $_SESSION['register']['email'] = $post['email'];
                     $this->send_email(
-                        $_SESSION['register']['email']
+                        $_SESSION['register']['username']
+                        ,$_SESSION['register']['email']
                         ,'Token request.'
-                        ,"A token was requested for this email address.\r\n"
+                        ,$_SESSION['register']['username'].",\r\n\r\nA token was requested for this email address.\r\n"
                         ."\r\n"
                         ."Token:\r\n"
                         .$_SESSION['register']['token']."\r\n"
                         ."\r\n"
-                        ."If you didn't trigger this request, please reply here to report a possible hack attempt."
+                        ."If you didn't trigger this request, please reply here to report a possible hack attempt.\r\n"
                     );
                 break;
                 case 1: // Token or new username was entered.
