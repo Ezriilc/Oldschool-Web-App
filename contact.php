@@ -38,6 +38,8 @@ CLASS Contact{
         // Begin processing.
         $form = '';
         $status = '';
+        $form_name = '';
+        $form_email = '';
 
         // CHECK submission.
         if(isset($_POST['antibot'], $_POST['name'], $_POST['email'], $_POST['subject'], $_POST['message'])){

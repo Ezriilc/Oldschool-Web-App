@@ -440,7 +440,7 @@ WHERE id=:id
 ")
                     AND $stmt->bindValue(':id', $id, PDO::PARAM_INT)
                     AND $stmt->execute()
-                    AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
+                    AND $result = $stmt->rowCount()
                 ){
                     $cookie_nulled = true;
                 }else{

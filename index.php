@@ -1,4 +1,4 @@
-<?php if( ! $webapp = @include('webapp.php') ){ die('Webapp failure.'); } ?>
+<?php if( ! $webapp = include('webapp.php') ){ die('Webapp failure.'); } ?>
 <!DOCTYPE HTML>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
@@ -32,13 +32,13 @@
     <section id="section_2" class="section section_2">
         <?php echo $webapp['site']['content']; ?>
         <div style="clear:both;"></div>
-        <?php echo $webapp['page']['header']; ?>
+        <?php echo $webapp[$webapp['page']]['header']; ?>
         <div style="clear:both;"></div>
-        <?php echo $webapp['page']['content']; ?>
+        <?php echo $webapp[$webapp['page']]['content']; ?>
         <div style="clear:both;"></div>
-        <?php echo $webapp['page']['include']; ?>
+        <?php echo $webapp[$webapp['page']]['include']; ?>
         <div style="clear:both;"></div>
-        <?php echo $webapp['page']['footer']; ?>
+        <?php echo $webapp[$webapp['page']]['footer']; ?>
         <div style="clear:both;"></div>
     </section>
     <footer id="section_3" class="section section_3">
@@ -55,4 +55,3 @@
     </div>
 </body>
 </html>
-<? //var_dump(@$_SESSION,@$_COOKIE,'END OF DEBUG'); ?>

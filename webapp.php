@@ -1,101 +1,119 @@
 <?php
-if(
-    pathinfo($_SERVER['PHP_SELF'])['filename'] === pathinfo(__FILE__)['filename']
-    && pathinfo($_SERVER['PHP_SELF'])['extension'] === pathinfo(__FILE__)['extension']
-){
-//    header('Location: ./');
-//    die('No direct access.');
-}
 
 new WEBAPP;
-//var_dump(@$_SESSION);
-return WEBAPP::$data;
+return WEBAPP::$content;
 
 class WEBAPP{
-    static
-        $default_page = 'home'
-        ,$user = null
-        ,$data = null
-    ;
+    static $default_page, $user, $content = './content.ini';
     function __construct(){
-        
-        // Get site data.
-        if(
-            @include('content.php')
-        ){
-            static::$data['site'] = $site;
-            static::$data['page'] = $this->pick_a_page($pages, static::$default_page);
-        }else{
-            die('Content failure.');
-        }
         
         // User sessions and security.
         static::$user = @include('user.php');
         
-        static::$data = $this->prepare_display(static::$data);
+        // Get site data.
+        if( ! static::$content = $this->load_content(static::$content) ){
+            die('Content failure.');
+        }
+        static::$content['page'] = $this->pick_a_page(static::$content);
+        static::$content = $this->prepare_display(static::$content);
+    }
+    
+    private function load_content($file){
+        if( ! is_readable($file) ){ sleep(5); }
+        if( ! is_readable($file) ){ return; }
+        $file = file($file);
+        $sect_patt = '/^\[(.+)\]$/';
+        $split_patt = '/^([^=]+)=(.*)$/';
+        $content = array();
+        $curr_sect = '';
+        $multi = '';
+        $i=1;while( $i <= count($file) ){
+            $line = $file[$i-1];
+            if( $section = preg_filter($sect_patt,'$1',trim($line)) ){
+                $curr_sect = $section;
+                if( ! array_key_exists($section,$content) ){
+                    $content[$section] = array();
+                }
+            }elseif( $curr_sect ){
+                if( $multi ){
+                    if( preg_match('/^"$/', trim($line)) ){
+                        $content[$curr_sect][$multi] = ltrim($content[$curr_sect][$multi]);
+                        $multi = '';
+                    }else{
+                        if( empty( $content[$curr_sect][$multi] ) ){
+                            $content[$curr_sect][$multi] = PHP_EOL;
+                        }
+                        $content[$curr_sect][$multi] .= $line;
+                    }
+                }else{
+                    $line = trim($line);
+                    $prop = trim(preg_filter($split_patt,'$1',$line));
+                    $val = trim(preg_filter($split_patt,'$2',$line));
+                    if( $prop ){
+                        if( $val AND $prop ){
+                            if( $val === '"' ){
+                                $multi = $prop;
+                            }else{
+                                if( $val === '""' ){
+                                    $val = '';
+                                }
+                                $content[$curr_sect][$prop] = trim($val,'"');
+                            }
+                        }
+                    }
+                }
+            }
+            $i++;
+        }
+        return $content;
     }
     
     
     
-    private function pick_a_page($pages,$default){
-        if( !empty($_GET['page']) ){
-            $get_page = $_GET['page'];
-            foreach( $pages as $val ){
-                if(
-                    !empty($val['page'])
-                    AND $val['page'] === $get_page
-                ){
-                    $page = $val;
-                    break;
+    private function pick_a_page($pages){
+        if( ! empty($_GET['page']) ){
+            foreach( $pages as $page => $val ){
+                if( $page === 'site' ){ continue; }
+                if( $page === $_GET['page'] ){
+                    return $page;
                 }
             }
-            if( empty($page) ){
-                // Page doesn't exist, go home.
-                $uri  = $_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
-                header('Location: http://'.$uri);
-                exit;
-            }
+            $uri  = $_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
+            header('Location: http://'.$uri);
+            exit;
         }
-        if( empty($page) ){
-            // Still no page, use the first.
-            if( empty($pages[$default]) ){
-                foreach( $pages as $val ){
-                    $page = $val;
-                    break;
-                }
-            }else{
-                $page = $pages[$default];
-            }
+        foreach( $pages as $page => $val ){
+            if( $page === 'site' ){ continue; }
+            return $page;
         }
-        return $page;
+        die('Failed to pick a page.');
     }
     
     private function prepare_display($data){
         $data['head'] = '';
-        $page = &$data['page'];
-        $page['include'] = '';
-        
+        $page = $data['page'];
+        $data[$page]['include'] = '';
         // Include files...
-        $inc_file = $page['page'].'.php'; // ...that match ?page=
+        $inc_file = $data['page'].'.php'; // ...that match ?page=
         if(
-            $page['page'] === 'user'
+            $page === 'user'
             AND !empty(static::$user)
         ){
-            $page['include'] .= static::$user;
+            $data[$page]['include'] .= static::$user;
         }elseif( is_readable($inc_file) && !is_dir($inc_file) ){
-            $page['include'] .= include($inc_file);
+            $data[$page]['include'] .= include($inc_file);
         }
-        $inc_style_file = $page['page'].'.css';
+        $inc_style_file = $page.'.css';
         if( is_readable($inc_style_file) && !is_dir($inc_style_file) ){
             $data['head'] .= '
 <link rel="stylesheet" type="text/css" href="'.$inc_style_file.'"/>';
         }
-        $inc_js_file = $page['page'].'.js';
+        $inc_js_file = $page.'.js';
         if( is_readable($inc_js_file) && !is_dir($inc_js_file) ){
             $data['head'] .= '
 <script type="text/javascript" src="'.$inc_js_file.'"></script>';
         }
-        if( !empty($page['style']) ){
+        if( !empty($data[$page]['style']) ){
             $data['head'] .= '
 <style type="text/css"><!--
     '.$page['style'].'
@@ -103,20 +121,20 @@ class WEBAPP{
         }
         
         // Combine site and page details.
-        if( !empty($page['title']) AND !empty($data['site']['title']) ){
-            $data['title'] = $page['title'].' : '.$data['site']['title'];
+        if( !empty($data[$page]['title']) AND !empty($data['site']['title']) ){
+            $data['title'] = $data[$page]['title'].' : '.$data['site']['title'];
         }else{
             $data['title'] = $data['site']['title'];
         }
         $data['description'] = $data['site']['description'];
-        if( !empty($page['description']) ){
-            $data['description'] .= ' : '.$page['description'];
+        if( !empty($data[$page]['description']) ){
+            $data['description'] .= ' : '.$data[$page]['description'];
         }
         $data['author'] = $data['site']['author'];
-        if( !empty($page['author']) ){
-            $data['author'] .= ' / '.$page['author'];
+        if( !empty($data[$page]['author']) ){
+            $data['author'] .= ' / '.$data[$page]['author'];
         }
-        $data['keywords'] = $data['site']['keywords'].','.$page['keywords'];
+        $data['keywords'] = $data['site']['keywords'].','.$data[$page]['keywords'];
         return $data;
     }
 }
