@@ -5,7 +5,7 @@ return $contact->output;
 
 CLASS Contact{
     function __construct(){
-        $to_email = 'Support1@Kerbaltek.com';
+        $to_email = 'admin@localhost'; // Is used for both To and From - must be valid addy for most servers.
         $to_name = 'Site Contact';
         $antibot_quest = 'What is the name of this website?';
         $antibot_key_1 = '';
