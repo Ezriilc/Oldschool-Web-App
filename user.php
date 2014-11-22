@@ -607,8 +607,7 @@ VALUES (:id, :batch, :token)
         }else{
         
             $form = '
-<form id="login_form" name="login_form" class="login user" method="post" autocomplete="on"><fieldset>
-';
+<form id="login_form" name="login_form" class="login user" method="post" autocomplete="on"><fieldset>';
             if( empty($_SESSION['logged_in']) ){
                 // NOT logged in.
                 $form .= '
@@ -629,20 +628,17 @@ VALUES (:id, :batch, :token)
                 }
                 $form .= '<input type="hidden" name="user_task" value="login"/>
         <input type="submit" name="submit" value="Login"/>
-    </span>
-';
+    </span>';
             }else{
                 // Logged in.
                 $form .= '
     <h3>Logout</h3>
     <p>'.$message.'</p>
     <input type="hidden" name="user_task" value="logout"/>
-    <input type="submit" name="submit" value="Logout"/>
-';
+    <input type="submit" name="submit" value="Logout"/>';
             }
             $form .= '
-</fieldset></form>
-';
+</fieldset></form>';
         }
         return $form;
         // END of login().
@@ -825,8 +821,7 @@ WHERE id=:id
     </span><br/>
     <input type="hidden" name="user_task" value="recover"/>
     <input type="submit" name="submit" value="Recover"/>
-</fieldset></form>
-';
+</fieldset></form>';
         }else{
             switch( $step ){
                 case 0: // Username AND Email address were entered.

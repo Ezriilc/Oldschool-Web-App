@@ -95,7 +95,7 @@ function showDebug(debugInfo){
 function fixLinks(){
 // External links get new window.
 // Active links get different style.
-// Updated: 2013-10-30-1305
+// Updated: 2014-11-22-1039
 
     var eachLink, linkClass, matchArgs, i, ii, iii, thisOne;
     var location = window.location;
@@ -118,8 +118,8 @@ function fixLinks(){
             (
                 !linkClass.match(/(^|\s+)intlink(\s+|$)/i) && // NOT forced internal.
                 (
-                    eachLink.hostname !== location.hostname || // Diff host.
-                    eachLink.pathFixed !== location.pathFixed // Diff path.
+                    eachLink.hostname !== location.hostname // Diff host.
+//                    || eachLink.pathFixed !== location.pathFixed // Diff path.
                 )
             )
         ){

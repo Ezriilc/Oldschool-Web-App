@@ -131,6 +131,7 @@ select,option,textarea{
     background-repeat:repeat-x;
     border-width:1px;
     border-style:solid;
+    border-radius:.25em;
     padding:6px 6px 5px 5px;
     line-height:.8em;
     text-decoration:none;
@@ -198,6 +199,7 @@ select,option,textarea{
     padding:5px;
     border-width:1px;
     border-style:solid;
+    border-radius:.25em;
 }
 .popout:hover>.box{
     display:block;

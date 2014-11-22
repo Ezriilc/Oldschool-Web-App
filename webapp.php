@@ -4,18 +4,17 @@ new WEBAPP;
 return WEBAPP::$content;
 
 class WEBAPP{
-    static $default_page, $user, $content = './content.ini';
+    static
+        $content = 'content.ini'
+        ,$root_dir = '/Oldschool-Web-Kit'
+    ;
     function __construct(){
-        
-        // User sessions and security.
-        static::$user = @include('user.php');
-        
-        // Get site data.
-        if( ! static::$content = $this->load_content(static::$content) ){
-            die('Content failure.');
-        }
-        static::$content['page'] = $this->pick_a_page(static::$content);
-        static::$content = $this->prepare_display(static::$content);
+        $content = './'.static::$content;
+        if( ! $content = $this->load_content($content) ){ die('Content failure.'); }
+        $content['page_name'] = $this->pick_a_page($content);
+        $content['page'] = & $content['pages'][$content['page_name']];
+        $content = $this->prepare_display($content);
+        static::$content = $content;
     }
     
     private function load_content($file){
@@ -24,26 +23,34 @@ class WEBAPP{
         $file = file($file);
         $sect_patt = '/^\[(.+)\]$/';
         $split_patt = '/^([^=]+)=(.*)$/';
-        $content = array();
-        $curr_sect = '';
+        $content = array('pages' => array());
+        $section = '';
         $multi = '';
         $i=1;while( $i <= count($file) ){
             $line = $file[$i-1];
-            if( $section = preg_filter($sect_patt,'$1',trim($line)) ){
-                $curr_sect = $section;
-                if( ! array_key_exists($section,$content) ){
-                    $content[$section] = array();
+            if( $try_section = preg_filter($sect_patt,'$1',trim($line)) ){
+                $section = $try_section;
+            }elseif( $section ){
+                if( $section === 'site' ){
+                    if( ! array_key_exists($section,$content) ){
+                        $content[$section] = array();
+                    }
+                    $target_prop = & $content[$section];
+                }else{
+                    if( ! array_key_exists($section,$content['pages']) ){
+                        $content['pages'][$section] = array();
+                    }
+                    $target_prop = & $content['pages'][$section];
                 }
-            }elseif( $curr_sect ){
                 if( $multi ){
                     if( preg_match('/^"$/', trim($line)) ){
-                        $content[$curr_sect][$multi] = ltrim($content[$curr_sect][$multi]);
+                        $target_prop[$multi] = ltrim($target_prop[$multi]);
                         $multi = '';
                     }else{
-                        if( empty( $content[$curr_sect][$multi] ) ){
-                            $content[$curr_sect][$multi] = PHP_EOL;
+                        if( empty( $target_prop[$multi] ) ){
+                            $target_prop[$multi] = PHP_EOL;
                         }
-                        $content[$curr_sect][$multi] .= $line;
+                        $target_prop[$multi] .= $line;
                     }
                 }else{
                     $line = trim($line);
@@ -54,10 +61,7 @@ class WEBAPP{
                             if( $val === '"' ){
                                 $multi = $prop;
                             }else{
-                                if( $val === '""' ){
-                                    $val = '';
-                                }
-                                $content[$curr_sect][$prop] = trim($val,'"');
+                                $target_prop[$prop] = trim($val,'"');
                             }
                         }
                     }
@@ -65,77 +69,102 @@ class WEBAPP{
             }
             $i++;
         }
+        foreach( $content['site'] as $prop => $val ){
+            foreach( $content['pages'] as $page => $details ){
+                if( ! array_key_exists($prop,$content['pages'][$page]) ){
+                    $content['pages'][$page][$prop] = '';
+                }
+            }
+        }
+//var_dump($content);die();
         return $content;
     }
     
     
     
-    private function pick_a_page($pages){
-        if( ! empty($_GET['page']) ){
-            foreach( $pages as $page => $val ){
-                if( $page === 'site' ){ continue; }
-                if( $page === $_GET['page'] ){
-                    return $page;
+    private function pick_a_page($content){
+        if( ! empty($_SERVER['REQUEST_URI']) ){
+            $patt = preg_quote(static::$root_dir,'/');
+            if( $request = preg_replace('/^'.$patt.'\//', '', $_SERVER['REQUEST_URI']) ){
+                foreach( $content['pages'] as $page => $val ){
+                    if( $page === $request ){
+                        return $page;
+                    }
                 }
+                $uri  = $_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
+                header('Location: http://'.$uri);
+                exit;
             }
-            $uri  = $_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
-            header('Location: http://'.$uri);
-            exit;
         }
-        foreach( $pages as $page => $val ){
-            if( $page === 'site' ){ continue; }
-            return $page;
+        if( ! empty($content['site']['home_page']) ){
+            return $content['site']['home_page'];
         }
-        die('Failed to pick a page.');
+        if( ! empty($content['pages']['home']) ){
+            return 'home';
+        }
+        foreach( $content['pages'] as $page => $val ){
+            return $page; // First one.
+        }
+        die('No home page found.');
     }
     
-    private function prepare_display($data){
-        $data['head'] = '';
-        $page = $data['page'];
-        $data[$page]['include'] = '';
-        // Include files...
-        $inc_file = $data['page'].'.php'; // ...that match ?page=
-        if(
-            $page === 'user'
-            AND !empty(static::$user)
-        ){
-            $data[$page]['include'] .= static::$user;
-        }elseif( is_readable($inc_file) && !is_dir($inc_file) ){
-            $data[$page]['include'] .= include($inc_file);
+    private function prepare_display($content){
+        $page_name = $content['page_name'];
+        $site = & $content['site'];
+        $page = & $content['page'];
+        $page['head'] = '';
+        $page['include'] = '';
+        
+        // Automatic page includes.
+        $inc_file = $page_name.'.php'; // ...that match ?page=
+        if( is_readable($inc_file) && !is_dir($inc_file) ){
+            $page['include'] .= include($inc_file);
         }
-        $inc_style_file = $page.'.css';
+        if( !empty($page['php']) ){
+            eval($page['php']);
+        }
+        // CSS
+        $inc_style_file = $page_name.'.css';
         if( is_readable($inc_style_file) && !is_dir($inc_style_file) ){
-            $data['head'] .= '
+            $page['head'] .= '
 <link rel="stylesheet" type="text/css" href="'.$inc_style_file.'"/>';
         }
-        $inc_js_file = $page.'.js';
-        if( is_readable($inc_js_file) && !is_dir($inc_js_file) ){
-            $data['head'] .= '
-<script type="text/javascript" src="'.$inc_js_file.'"></script>';
-        }
-        if( !empty($data[$page]['style']) ){
-            $data['head'] .= '
+        if( !empty($page['style']) ){
+            $page['head'] .= '
 <style type="text/css"><!--
     '.$page['style'].'
 //--></style>';
         }
+        // JS
+        $inc_js_file = $page_name.'.js';
+        if( is_readable($inc_js_file) && !is_dir($inc_js_file) ){
+            $page['head'] .= '
+<script type="text/javascript" src="'.$inc_js_file.'"></script>';
+        }
+        if( !empty($page['javascript']) ){
+            $page['head'] .= '
+<script type="text/javascript"><!--
+    '.$page['javascript'].'
+//--></script>';
+        }
         
         // Combine site and page details.
-        if( !empty($data[$page]['title']) AND !empty($data['site']['title']) ){
-            $data['title'] = $data[$page]['title'].' : '.$data['site']['title'];
+        if( !empty($page['title']) AND !empty($site['title']) ){
+            $content['title'] = $page['title'].' : '.$site['title'];
         }else{
-            $data['title'] = $data['site']['title'];
+            $content['title'] = $site['title'];
         }
-        $data['description'] = $data['site']['description'];
-        if( !empty($data[$page]['description']) ){
-            $data['description'] .= ' : '.$data[$page]['description'];
+        $content['description'] = $site['description'];
+        if( !empty($page['description']) ){
+            $content['description'] .= ' : '.$page['description'];
         }
-        $data['author'] = $data['site']['author'];
-        if( !empty($data[$page]['author']) ){
-            $data['author'] .= ' / '.$data[$page]['author'];
+        $content['author'] = $site['author'];
+        if( !empty($page['author']) ){
+            $content['author'] .= ' / '.$page['author'];
         }
-        $data['keywords'] = $data['site']['keywords'].','.$data[$page]['keywords'];
-        return $data;
+        $content['keywords'] = $site['keywords'].','.$page['keywords'];
+        
+        return $content;
     }
 }
 ?>
