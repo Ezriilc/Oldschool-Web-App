@@ -1,9 +1,14 @@
 <IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . index.php [L]
+    RewriteEngine On
+    
+    ## Protect downloads from direct access.
+    RewriteCond %{REQUEST_URI} /downloads [NC]
+    RewriteRule .* Downloader.php [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule .* index.php [L]
 </IfModule>
 
-# Prevent file browsing
+## Prevent file browsing
 Options -Indexes
