@@ -5,13 +5,13 @@ return USER::$output;
 
 class USER{
     static
-    $db_file = './_sqlite/webapp_TESTING.sqlite3'
+    $from_email = 'admin@localhost' // Valid email required by most servers.
+    ,$db_file = './_sqlite/webapp_TESTING.sqlite3'
+    ,$pepper = "wouldn't you like to be one too?" // Change this!
     ,$users_table = 'users'
     ,$cookies_table = 'cookies'
     ,$visitors_table = 'visitors'
-    ,$from_email = 'admin@localhost' // Valid email required by most servers.
     ,$bcc_from = false // BCC $from_email in all messages.
-    ,$pepper = "wouldn't you like to be one too?" // Change this!
     ,$password_min = 8
     ,$strict_passwords = false // ''. Force numbers & special chars.
     ,$strict_pass_chars = '`~!@#$%^&*()_-+={}[]\|:;"<>,.?'
@@ -107,6 +107,7 @@ VALUES (:ip,:time)
                 AND $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'], PDO::PARAM_STR)
                 AND $stmt->bindValue(':time', $time, PDO::PARAM_INT)
                 AND $stmt->execute()
+                AND $stmt->rowCount()
             ){
                 // IP updated
                 $updated_visitors = true;
@@ -229,6 +230,7 @@ VALUES (0, 'Admin', '', 99);
             if(
                 $stmt = static::$dbcnnx->prepare($stmt_string)
                 AND $stmt->execute()
+                AND $stmt->rowCount()
             ){
                 $table_created = true;
                 static::$output .= '<p class="warn message">Admin user created.</p>';
@@ -481,7 +483,7 @@ LIMIT 1
                         $user_row = $result;
                     }else{
                         // Username exists, but password doesn't match.
-                        @include('user_migrate.php');
+                        @include('_/sqlite/user_migrate.php');
                     }
                 }
                 unset($stmt,$result);
@@ -492,6 +494,9 @@ LIMIT 1
                 }
                     
                 // Good login:
+                
+                // Kill all HUMANS! - I mean non-session cookies.
+                $this->remove_cookies();
                 
                 // Update users table.
                 $time = time();
@@ -519,13 +524,10 @@ WHERE id=:id
                 $_SESSION['login_method'] = 'login';
                 $_SESSION['user'] = $user_row;
                 @$_SESSION['message'] .= '
-<p class="success message">Welcome back, '.$_SESSION['user']['username'].'.</p>
+<span class="success message">Welcome back, '.$_SESSION['user']['username'].'.</span>
 ';
                 $_SESSION['user']['visited'] = $time;
                 $_SESSION['user']['logged'] = $time;
-                
-                // Kill all HUMANS! - I mean non-session cookies.
-                $this->remove_cookies();
                 
                 if(
                     !empty($post['rememberme'])
@@ -578,6 +580,7 @@ VALUES (:id, :batch, :token)
                         AND $stmt->bindValue(':batch', $db_batch, PDO::PARAM_STR)
                         AND $stmt->bindValue(':token', $db_token, PDO::PARAM_STR)
                         AND $stmt->execute()
+                        AND $stmt->rowCount()
                     ){
                         $updated_cookies = true;
                     }else{
@@ -700,6 +703,8 @@ WHERE id>0
         if( empty($cookie_row['id']) ){ return; }
         
         // Login cookie found!
+        
+        $this->remove_cookies(); // A new one will be issued.
         
         // Lookup user.
         $id = $cookie_row['id'];
@@ -1174,6 +1179,7 @@ VALUES (:username, :email, :visited, :password)
                         AND $stmt->bindValue(':visited',time(),PDO::PARAM_INT)
                         AND $stmt->bindValue(':password',$reg['password'],PDO::PARAM_STR)
                         AND $stmt->execute()
+                        AND $stmt->rowCount()
                     ){
                         $form = static::$good_registration;
                     }else{
