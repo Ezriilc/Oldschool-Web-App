@@ -205,7 +205,7 @@ id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
 ,username TEXT UNIQUE NOT NULL
 ,email TEXT UNIQUE NOT NULL
 ,rank INTEGER NOT NULL DEFAULT 1
-,joined INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+,joined INTEGER NOT NULL DEFAULT (strftime('%s','now','localtime'))
 ,visited INTEGER
 ,logged INTEGER
 ,password TEXT
