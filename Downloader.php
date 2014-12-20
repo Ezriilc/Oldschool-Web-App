@@ -4,14 +4,16 @@ new DOWNLOADER;
 
 CLASS DOWNLOADER{
     static
-        $db_file = './_sqlite/Kerbaltek_TESTING.sqlite3'
+        $db_file = './_sqlite/Oldschool.sqlite3'
+        , $zip_prefix = 'Oldschool-DLC_'
         , $downloads_table = 'downloads'
-        , $zip_prefix = 'Kerbaltek-DLC_'
+        , $cache_time = 300 // Seconds
         , $types = array(
             'image'=>array('jpg','jpeg','png','gif','bmp')
             ,'video'=>array('mp4','mpg','mpeg','avi','flv')
             ,'audio'=>array('mp3','wav','flac','wma')
-            ,'special'=>array('zip','craft')
+            ,'text'=>array('txt','craft','cfg','sfs')
+            ,'special'=>array('zip','dll')
         )
         ,$dbcnnx
     ;
@@ -26,23 +28,58 @@ CLASS DOWNLOADER{
         static::get_download();
     }
     
+    static public function get_info($pathname){
+        if( ! static::init_database() ){ return; }
+        $user_file_patt = '^.*\/?users\/([^\/]+)\/(.*)$';
+        $username = preg_filter('/'.$user_file_patt.'/i', '$1', $pathname);
+        $logname = basename($pathname);
+        if( $username ){ $logname = $username.'/'.$logname; }
+        if(
+            $stmt = static::$dbcnnx->prepare("
+SELECT * FROM ".static::$downloads_table."
+WHERE file=:file
+")
+            AND $stmt->bindValue(':file', $logname, PDO::PARAM_STR)
+            AND $stmt->execute()
+            AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
+        ){
+            return $result;
+        }
+    }
+    
     static private function get_download(){
         $zip_prefix = static::$zip_prefix;
         $types = static::$types;
         $name_ext_patt = '/^(.*)\.([^\.\/]+)$/';
-        $root_patt = preg_quote(dirname($_SERVER['PHP_SELF']), '/');
-        $request = preg_replace('/'.$root_patt.'\//', '', rawurldecode($_SERVER['REQUEST_URI']));
-        $download = $request;
+        $request = preg_replace('/(\?.*)$/', '', rawurldecode($_SERVER['REQUEST_URI']));
+        $root_dir = dirname($_SERVER['PHP_SELF']);
+        if( $root_dir !== '/' ){
+            $root_patt = preg_quote($root_dir,'/');
+            $request = preg_replace('/^'.$root_patt.'/', '', $request);
+        }
+        $request = '.'.$request; // ./ Required to find a file.
+        $pathname = $request;
         $dirname = dirname($request);
-        $filename = basename($request);
-        $dir = basename(dirname($request));
-        $name = preg_filter($name_ext_patt,'$1',$filename);
-        $ext = preg_filter($name_ext_patt,'$2',$filename);
-        if( $filename === $zip_prefix ){
+        $basename = basename($request);
+        $dir = basename($dirname);
+        $name = preg_filter($name_ext_patt,'$1',$basename);
+        $ext = preg_filter($name_ext_patt,'$2',$basename);
+        if(
+            is_dir($pathname)
+            OR(
+                $basename !== $zip_prefix
+                AND(
+                    ! $name
+                    OR ! $ext
+                    OR ! in_array($ext, $types['all'])
+                )
+            )
+        ){ return; }
+        if( $basename === $zip_prefix ){
             $zip_filename = $zip_prefix.$dir.'.zip';
             $zip_obj = new ZipArchive();
             if( ! $zip_obj->open($zip_filename, ZIPARCHIVE::OVERWRITE) ){
-                die('ZIPARCHIVE error.');
+                die(get_called_class().': ZIPARCHIVE error.');
             }
             $scandir = scandir($dirname);
             foreach( $scandir as $scan_file ){
@@ -55,52 +92,92 @@ CLASS DOWNLOADER{
                     && in_array($scan_ext, $types['all'])
                 ){
                     $zip_obj->addFile($scan_pathname, $scan_file);
-                    $download = $zip_filename;
+                    $pathname = './'.$zip_filename;
                     $ext = 'zip';
                 }
             }
             $zip_obj->close();
         }
-        
-        if( ! is_readable($download) ){ sleep(5); }
-        if(
-            is_readable($download)
-            AND ! is_dir($download)
-            AND in_array($ext, $types['all'])
-        ){
-            if( $log = static::log_download($download) === true ){
-//die($download);
-                // Serve the file already!
-                $filename = preg_replace('/;/i', '_', basename($download));
-                    // No semi-colons inside HTTP headers - it ends the line.
-                header( 'Content-Description: File Transfer' );
-                header( 'Content-Type: application/octet-stream' );
-                header( 'Content-Disposition: attachment; filename="'.$filename.'"' );
-                    // filename string double-quoted to handle spaces.
-                header( 'Content-Transfer-Encoding: binary' );
-                header( 'Expires: 0' );
-                header( 'Cache-Control: must-revalidate' );
-                header( 'Pragma: public' );
-                header( 'Content-Length: ' .filesize($download) );
-                readfile($download);
-                exit;
-            }
-            die($log);
+        if( ! is_readable($pathname) ){ sleep(5); }
+        if( ! is_readable($pathname) ){
+            die(get_called_class().': Invalid resource.');
         }
-        die(get_called_class().': Bad file.<br/>');
+        // Download is ready.
+        
+        $logname = $basename;
+        $user_file_patt = '^.*\/users\/([^\/]+)\/(.*)$';
+        $username = preg_filter('/'.$user_file_patt.'/i', '$1', $pathname);
+        if( $username ){
+            $logname = $username.'/'.$logname;
+        }
+        $mime_type = finfo_file(finfo_open(FILEINFO_MIME_TYPE),$pathname);
+        $is_direct = false;
+        $is_local = false;
+        $is_approved = false;
+        if( empty($_SERVER['HTTP_REFERER']) ){
+            // Direct access.
+            $is_direct = true;
+        }else{
+            if(
+                preg_match('/^'.preg_quote('http://'.$_SERVER['HTTP_HOST'],'/').'/i', $_SERVER['HTTP_REFERER'])
+            ){ $is_local = true; }
+            if(
+                preg_match('/^'.preg_quote('http://forum.kerbalspaceprogram.com','/').'/i', $_SERVER['HTTP_REFERER'])
+            ){ $is_approved = true; }
+        }
+        
+        if(
+            ! $username
+            AND ! $is_local
+            AND ! $is_approved
+        ){
+            die(get_called_class().': Sorry, no direct access.');
+        }
+        if(
+            $is_local
+            AND $basename === 'ribbons.png'
+        ){
+            // Don't log.
+        }else{
+            if( $log = static::log_download($logname) !== true ){
+                die($log);
+            }
+        }
+var_dump($mime_type);
+        if(
+            $username
+            AND(
+                preg_match('/^(text|image|audio|video)\//i',$mime_type)
+            )
+        ){
+            header( 'Content-Type: '.$mime_type );
+        }else{
+            header( 'Content-Description: File Transfer' );
+            header( 'Content-Type: application/octet-stream' );
+            $filename = preg_replace('/;/i', '_', $basename);
+                // No semi-colons inside HTTP headers - it ends the line.
+            header( 'Content-Disposition: attachment; filename="'.$filename.'"' );
+            header( 'Content-Transfer-Encoding: binary' );
+        }
+        header( 'Vary:Accept-Encoding' );
+        header( 'Last-Modified:'.date('r',filemtime($pathname)) );
+        header( 'Cache-Control:no-transform,public,max-age:'.static::$cache_time.', s-maxage:'.static::$cache_time );
+        header( 'Expires: '.date('r',(time()+static::$cache_time)) );
+        header( 'Content-Length: ' .filesize($pathname) );
+        readfile($pathname);
+        exit;
     }
     
-    static private function log_download($download){
+    static private function log_download($name){
         if( $init = static::init_database() !== true ){
             return $init;
         }
-        $filename = basename($download);
         if(
             $stmt = static::$dbcnnx->prepare("
 SELECT count FROM ".static::$downloads_table."
 WHERE file=:file
 ")
-            AND $stmt->bindValue(':file', $filename, PDO::PARAM_STR)
+            AND $stmt->bindValue(':file', $name, PDO::PARAM_STR)
             AND $stmt->execute()
             AND $stmt->fetch(PDO::FETCH_ASSOC)
         ){
@@ -118,7 +195,7 @@ VALUES (:file)
         }
         if(
             ! empty($stmt)
-            AND $stmt->bindValue(':file', $filename, PDO::PARAM_STR)
+            AND $stmt->bindValue(':file', $name, PDO::PARAM_STR)
             AND $stmt->execute()
             AND $stmt->rowCount()
         ){
@@ -150,7 +227,7 @@ WHERE type='table' AND name='".static::$downloads_table."';
             AND $stmt->execute()
             AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
         ){
-            // Table exists.
+            // Downloads table exists.
         }else{
             $stmt_string = "
 CREATE TABLE ".static::$downloads_table."(
@@ -165,9 +242,9 @@ id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT
                 $stmt = static::$dbcnnx->prepare($stmt_string)
                 AND $stmt->execute()
             ){
-                // Table created.
+                // Downloads table created.
             }else{
-                return get_called_class().': Can\'t create table.';
+                return get_called_class().': Can\'t create downloads table.';
             }
         }
         return true;

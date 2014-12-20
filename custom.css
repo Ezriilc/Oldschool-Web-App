@@ -204,3 +204,74 @@ select,option,textarea{
 .popout:hover>.box{
     display:block;
 }
+
+.section{
+    background-color:#6c823d;
+}
+.section_2{
+    background-color:white;
+    background-image:url(graphics/Kerbaltek/sidebar.png);
+    background-position:-915px top;
+    background-repeat:repeat-y;
+    padding-left:77px;
+    max-width:900px;
+    min-width:66.6%;
+    border-right-width:1px;
+}
+.section_2>h2{
+    border-bottom-width:1px;
+    padding:15px;
+    margin-bottom:15px;
+}
+
+.section, .section textarea{
+    font-family:Arial, sans-serif;
+}
+.section, .section textarea, .section a, .section a:visited{
+    color:black;
+}
+.section a:hover, .section a:focus, .section a:active,
+.section a.active, .section a:visited.active{
+    color:black;
+}
+.section a:hover, .section a:focus, .section a:active,
+.section a.active{
+    background-color:#90ad51;
+    border-color:black;
+}
+/* HEADERS */
+.section h1,.section h2,.section h3,.section h4,.section h5,.section h6{
+    font-family:Times New Roman, Georgia;
+}
+/* BORDERS (Blocks that lack defaults, color only. */
+.section h1,.section h2,.section h3,.section h4,.section h5,.section h6,
+.section ul,.section ol,.section li,.section dl,.section dd,.section dl,.section dt,
+.section address,.section blockquote.section div,.section p,.section pre,.section table,
+.section form,.section legend,.section noscript,.section output,
+.section .menu a,.section a.menu{
+    border-color:black;
+}
+
+#section_1{
+    background-image:url(graphics/Kerbaltek/banner-bg.jpg);
+    background-position:center top;
+    background-repeat:repeat-x;
+    background-attachment:scroll;
+    border-bottom-width:1px;
+    border-color:#6c823d;
+}
+#section_3{
+    border-top-width:1px;
+    border-color:black;
+}
+
+/* Menus */
+.menu a,a.menu{
+background-color:#90ad51;
+}
+.menu a:hover,a.menu:hover,
+.menu a:focus,a.menu:focus,
+.menu a:active,a.menu:active,
+.menu a.active,a.menu.active{
+background-color:transparent;
+}

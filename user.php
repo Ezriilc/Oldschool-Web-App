@@ -1,17 +1,48 @@
 <?php
 
 new USER;
-return USER::$output;
+$return = '';
+if( ! empty($_SESSION['logged_in']) ){
+    $users = USER::get_users();
+    $users = array_reverse($users);
+    foreach( $users as $user ){
+        $users_newest = $user;
+        break;
+    }
+    
+    $return .= '
+<hr/>
+<div>
+    <h2>Members</h2>
+    Count: <strong>'.count($users).'</strong>;
+    Newest: <strong>'.$users_newest['username'].'</strong>, <small>joined '.date('l, F j, Y, g:i a (T, \G\M\TP)',$users_newest['joined']).'</small><br/>
+    <div class="member_list">
+    ';
+    foreach($users as $user){
+        if(
+            $user['username'] === $users_newest['username']
+            OR $user['username'] === 'Admin'
+        ){ continue; }
+        if( empty($first) ){ $first = true; }
+        else{ $return .= ', '; }
+        $return .= $user['username'];
+    }
+    $return .= '
+    </div>
+</div>';
+}
+
+return USER::$output.$return;
 
 class USER{
     static
     $from_email = 'admin@localhost' // Valid email required by most servers.
-    ,$db_file = './_sqlite/webapp_TESTING.sqlite3'
-    ,$pepper = "wouldn't you like to be one too?" // Change this!
+    ,$db_file = './_sqlite/Oldschool.sqlite3'
+    ,$pepper = "Wouldn't you like to be one too?" // Change this!
     ,$users_table = 'users'
     ,$cookies_table = 'cookies'
     ,$visitors_table = 'visitors'
-    ,$bcc_from = false // BCC $from_email in all messages.
+    ,$bcc_from = true // BCC $from_email in all messages.
     ,$password_min = 8
     ,$strict_passwords = false // ''. Force numbers & special chars.
     ,$strict_pass_chars = '`~!@#$%^&*()_-+={}[]\|:;"<>,.?'
@@ -33,8 +64,6 @@ class USER{
     ,$good_recovery = '<p class="success message">Your password has been updated.</p>'
     ,$dbcnnx = null
     ,$output = null
-    ,$clean_url = null
-    ,$mail_site = null
     ,$cookie_ttl = null
     ;
     
@@ -42,11 +71,6 @@ class USER{
         if( empty(static::$cookie_ttl) ){
             // First run, setup static vals.
             static::$cookie_ttl = 60*60*24 * static::$cookie_days;
-            static::$clean_url = $_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']);
-            static::$mail_site = strtoupper(preg_replace('/^(www\.)?(.*)\/[^\/]*$/i','$2',static::$clean_url));
-            if( !empty($_GET['page']) ){
-                static::$clean_url .= '?page='.$_GET['page'];
-            }
             static::$pepper = md5(sha1(static::$pepper));
             if( static::$strict_passwords ){
                 static::$bad_password .= '<p class="error message">Passwords must be at least '.static::$password_min.' characters long and include at least one each of the following: uppercase and lowercase letters, numbers, and special characters [ '.static::$strict_pass_chars.'/\' ].</p>';
@@ -62,9 +86,7 @@ class USER{
             return;
         }
         
-        if( ! $this->init_database() ){
-            return;
-        }
+        if( ! static::init_database() ){ return; }
         
         // Check for $_POST.
         if( !empty($_POST['user_task']) ){
@@ -174,13 +196,33 @@ VALUES (:ip,:time)
         // END of __construct().
     }
     
-    private function init_database(){
+    static public function get_users(){
+        if( ! static::init_database() ){ return; }
+        if(
+            $stmt = static::$dbcnnx->prepare("
+SELECT * FROM ".static::$users_table."
+WHERE rank>0
+")
+            AND $stmt->execute()
+            AND $results = $stmt->fetchAll(PDO::FETCH_ASSOC)
+        ){
+            $users = array();
+            foreach( $results as $row ){
+                if( ! $row['id'] ){ continue; }
+                $users[$row['id']] = $row;
+            }
+            ksort($users);
+            return $users;
+        }
+    }
+    
+    static private function init_database(){
         if(
             ! is_writable(static::$db_file)
             OR ! is_writable(dirname(static::$db_file))
         ){
             static::$output .= '<p class="error message">'.get_called_class().': Bad DB file/path.</p>';
-            return false; // Comment this line to create a new database file and tables.
+            return false;
         }
         try{
             static::$dbcnnx = new PDO('sqlite:'.static::$db_file);
@@ -238,6 +280,17 @@ VALUES (0, 'Admin', '', 99);
                 static::$output .= '<p class="error message">Admin user creation:</p> '.static::$bad_db;
                 return false;
             }
+        }
+        if(
+            $stmt = static::$dbcnnx->prepare("
+SELECT name FROM sqlite_master
+WHERE type='table' AND name='".static::$cookies_table."';
+")
+            AND $stmt->execute()
+            AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
+        ){
+            $table_exists = true;
+        }else{
             $stmt_string = "
 CREATE TABLE ".static::$cookies_table."(
 id INTEGER NOT NULL PRIMARY KEY
@@ -255,9 +308,20 @@ id INTEGER NOT NULL PRIMARY KEY
                 static::$output .= '<p class="error message">Cookies table creation:</p> '.static::$bad_db;
                 return false;
             }
+        }
+        if(
+            $stmt = static::$dbcnnx->prepare("
+SELECT name FROM sqlite_master
+WHERE type='table' AND name='".static::$visitors_table."';
+")
+            AND $stmt->execute()
+            AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
+        ){
+            $table_exists = true;
+        }else{
             $stmt_string = "
 CREATE TABLE ".static::$visitors_table."(
-ip TEXT NOT NULL
+ip TEXT NOT NULL PRIMARY KEY
 ,time INTEGER NOT NULL
 );
 ";
@@ -277,11 +341,18 @@ ip TEXT NOT NULL
     
     private function my_session_start(){
         $time = time();
+        ini_set('session.use_cookies', 'On');
+        ini_set('session.use_only_cookies', 'On');
+        ini_set('session.use_strict_mode', 'On');
+        ini_set('session.use_trans_sid', 'Off');
+        ini_set('session.cookie_lifetime', '0');
+        ini_set('session.hash_function', 'sha256');
+        ini_set('session.cookie_httponly', 'On');
         @session_start();
         // Ensure cookie is set.
         if(SID){ // No session cookie... maybe never!
             if( empty($_GET['bad_session']) ){ // First hit ONLY.
-                $url = 'http://'.static::$clean_url;
+                $url = 'http://'.$_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']);
                 if( empty($_GET['page']) ){
                     $url .= '?';
                 }else{
@@ -324,8 +395,8 @@ ip TEXT NOT NULL
             static::$dbcnnx = null;
         }
         session_write_close();
-        @header('Location: http://'.static::$clean_url);
-        exit('<p><a title="Click to continue." href="http://'.static::$clean_url.'">Click here to continue.</a></p>');
+        @header('Location: http://'.$_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']));
+        exit('<p><a title="Click to continue." href="http://'.$_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']).'">Click here to continue.</a></p>');
     }
     private function rand_salt($length=22){
         $chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -374,7 +445,7 @@ ip TEXT NOT NULL
         $eol = "\r\n";
         $boundary = 'MultiPartBoundary_'.uniqid('UID_',true);
         $to = $name.' <'.$email.'>';
-        $subject = static::$mail_site.' : '.$subject;
+        $subject = strtoupper(preg_replace('/^(www\.)?(.*)\/[^\/]*$/i','$2',$_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']))).' : '.$subject;
         $message = array(
             'This is a multi-part message in MIME format.'
             ,'--'.$boundary
@@ -469,6 +540,7 @@ WHERE id=:id
                     $stmt = static::$dbcnnx->prepare("
 SELECT * FROM ".static::$users_table."
 WHERE username=:username
+AND rank>0
 LIMIT 1
 ")
                     AND $stmt->bindValue(':username', $post['username'], PDO::PARAM_STR)
@@ -483,7 +555,7 @@ LIMIT 1
                         $user_row = $result;
                     }else{
                         // Username exists, but password doesn't match.
-                        @include('_/sqlite/user_migrate.php');
+                        @include('./_sqlite/user_migrate.php');
                     }
                 }
                 unset($stmt,$result);
@@ -712,6 +784,7 @@ WHERE id>0
             $stmt = static::$dbcnnx->prepare("
 SELECT * FROM ".static::$users_table."
 WHERE id=:id
+AND rank>0
 LIMIT 1
 ")
             AND $stmt->bindValue(':id', $id, PDO::PARAM_INT)
@@ -856,6 +929,7 @@ WHERE id=:id
                         $stmt = static::$dbcnnx->prepare("
 SELECT username,email FROM ".static::$users_table."
 WHERE username=:username AND email=:email
+AND rank>=0
 LIMIT 1
 ")
                         AND $stmt->bindValue(':username',$username,PDO::PARAM_STR)
@@ -949,7 +1023,7 @@ LIMIT 1
                         $email = $_SESSION['recover']['email'];
                         if(
                             $stmt = static::$dbcnnx->prepare("
-UPDATE ".static::$users_table." SET password=:password
+UPDATE ".static::$users_table." SET password=:password, rank=1
 WHERE username=:username AND email=:email
 ")
                             AND $stmt->bindValue(':password',$password,PDO::PARAM_STR)
@@ -1080,19 +1154,23 @@ LIMIT 1
                         break;
                     }
                     // Check username.
-                    if( !empty($post['username']) ){
+                    if( ! empty($post['username']) ){
                         $_SESSION['register']['username'] = $post['username'];
                     }
                     $db_username = $_SESSION['register']['username'];
+                    
                     if(
-                        $stmt = static::$dbcnnx->prepare("
+                        preg_match('/[\W]/i', $db_username)
+                        OR(
+                            $stmt = static::$dbcnnx->prepare("
 SELECT username FROM ".static::$users_table."
 WHERE username=:username
 LIMIT 1
 ")
-                        AND $stmt->bindValue(':username',$db_username,PDO::PARAM_STR)
-                        AND $stmt->execute()
-                        AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
+                            AND $stmt->bindValue(':username',$db_username,PDO::PARAM_STR)
+                            AND $stmt->execute()
+                            AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
+                        )
                     ){
                         // Username taken.
                         $form = '
@@ -1101,7 +1179,7 @@ LIMIT 1
     <p>Step 2b of 4</p>
     <p>'.static::$bad_username.'</p>
     <span style="display:inline-block;">
-        <label for="username">Username (5-20 chars):</label><br/>
+        <label for="username">Username (5-20 normal chars):</label><br/>
         <input type="text" id="username" name="username" size="20" maxlength="20"/>
     </span><br/>
     <span style="display:inline-block;">
@@ -1171,11 +1249,12 @@ LIMIT 1
                     $reg['password'] = $this->do_crypt($post['password']);
                     if(
                         $stmt = static::$dbcnnx->prepare("
-INSERT INTO ".static::$users_table." (username, email, visited, password)
-VALUES (:username, :email, :visited, :password)
+INSERT INTO ".static::$users_table." (username, email, joined, visited, password)
+VALUES (:username, :email, :joined, :visited, :password)
 ")
                         AND $stmt->bindValue(':username',$reg['username'],PDO::PARAM_STR)
                         AND $stmt->bindValue(':email',$reg['email'],PDO::PARAM_STR)
+                        AND $stmt->bindValue(':joined',time(),PDO::PARAM_INT)
                         AND $stmt->bindValue(':visited',time(),PDO::PARAM_INT)
                         AND $stmt->bindValue(':password',$reg['password'],PDO::PARAM_STR)
                         AND $stmt->execute()

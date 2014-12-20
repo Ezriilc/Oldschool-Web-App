@@ -1,3 +1,24 @@
+$(document).ready(function(){
+    
+    var clickToSelects = $('.click_to_select');
+    clickToSelects.prop('title','Right-click to select this, then choose COPY.');
+    clickToSelects.mouseup(function(event){
+        target = event.target;
+        if (document.body.createTextRange) {
+            range = document.body.createTextRange();
+            range.moveToElementText(target);
+            range.select();
+        }else if(window.getSelection){
+            selection = window.getSelection();        
+            range = document.createRange();
+            range.selectNodeContents(target);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    });
+    
+});
+
 var thisPage = location.search.replace(/.*page=([^?&]+).*/i,'$1');
 function systemWait(){
     if(document.readyState !== 'complete'){
@@ -10,7 +31,7 @@ function systemWait(){
     
     // csshover3.htc MUST be physically located in the absolute root of the domain.
     if( 'behavior' in document.body.style ){
-        document.body.style.behavior = 'url(/csshover3.htc)';
+//        document.body.style.behavior = 'url(/csshover3.htc)';
     }
 }
 systemWait();

@@ -5,8 +5,9 @@ return $contact->output;
 
 CLASS Contact{
     function __construct(){
-        $to_email = 'admin@localhost'; // Is used for both To and From - must be valid addy for most servers.
-        $to_name = 'Site Contact';
+        $to_email = 'admin@localhost';
+        $to_name = 'Site Admin';
+        $site_name = '';
         $antibot_quest = 'What is the name of this website?';
         $antibot_key_1 = '';
         $antibot_key_2 = '';
@@ -14,6 +15,15 @@ CLASS Contact{
         $to_email = $to_email ? : 'Contact@'.$_SERVER['HTTP_HOST'];
         $antibot_key_1 = $antibot_key_1 ? : $_SERVER['HTTP_HOST'];
         
+        $pre_form_text = '
+            <div class="article">
+                <p>If you have comments, suggestions, questions, or problems with anything, please tell us here.  We\'ll get back to you as soon as we can - usually within 24 hours.</p>
+                <p>You can also attach a screenshot, ship .craft file, or anything else you\'d like to send us.</p>
+            </div>
+            <div class="article" style="border:1px solid red;">
+                <h3>To Get Support:</h3>
+                <p>Please include a complete description of exactly what you\'re doing and what went wrong.</p>
+            </div>';
         $success = '<div style="background-color:green; color:white; padding:1em;"><h3 style="text-align:center;">Thank you for your message.</h3>
                 <p style="text-align:center;">If necessary, we\'ll get back to you as soon as we can.</p></div>';
         $error_prefix = '
@@ -29,6 +39,9 @@ CLASS Contact{
         $status = '';
         $form_name = '';
         $form_email = '';
+        $form_subject = '';
+        $form_message = '';
+        $form_antibot_answer = '';
 
         // CHECK submission.
         if(isset($_POST['antibot'], $_POST['name'], $_POST['email'], $_POST['subject'], $_POST['message'])){
@@ -42,7 +55,7 @@ CLASS Contact{
             $form_subject = my_specialchars($_POST['subject']);
             $form_message = my_specialchars($_POST['message']);
             $form_antibot_answer = my_specialchars($_POST['antibot']);
-            if( // Check anti-spam.
+            if( // Check anti-bot.
                 ! empty($form_antibot_answer)
                 AND (
                     (
@@ -55,14 +68,16 @@ CLASS Contact{
                 )
             ){ // Form is valid
                 $form_valid = true;
-                // Mail format : Updated 2014-11-21 @ 13:22, works on Windows AND Linux.
-                $mail_url = $_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']);
-                $mail_site = strtoupper(preg_replace('/^www\./i','',$mail_url));
-                $mail_site = preg_replace('/\/*$/i','',$mail_site);
+                // Mail format : Updated 2014-12-13 @ 10:09, works on Windows AND Linux.
+                if( empty($site_name) ){
+                    $site_name = $_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']);
+                    $site_name = strtoupper(preg_replace('/^www\./i','',$site_name));
+                    $site_name = preg_replace('/\/*$/i','',$site_name);
+                }
                 $mail_eol = "\r\n"; // Good for both.
                 $mail_from = $form_name.' <'.$form_email.'>';
                 $mail_to = $to_name.' <'.$to_email.'>';
-                $mail_subject = $mail_site.': '.$form_subject;
+                $mail_subject = $site_name.': '.$form_subject;
                 $mail_boundary = 'MultiPartBoundary_'.uniqid('UID_',true);
                 $mail_attachments = array();
                 if( count($_FILES) ){
@@ -90,7 +105,7 @@ CLASS Contact{
                     ,'--'.$mail_boundary
                     ,'Content-type: text/plain; charset=utf-8'
                     ,$mail_eol
-                    ,$form_message
+                    ,chunk_split($form_message)
                     ,'--'.$mail_boundary
                     ,'Content-type: text/html; charset=utf-8'
                     ,$mail_eol
@@ -98,7 +113,7 @@ CLASS Contact{
                     ,'Originator: <a title="Lookup on DomainTools.com" href="http://whois.domaintools.com/'.
                     $_SERVER['REMOTE_ADDR'].'">'.$_SERVER['REMOTE_ADDR'].'</a><br/>'
                     ,'Page: <a href="http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'].'">http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'].'</a><br/>'
-                    ,'Server Time: '.date('r').'<br/>'
+                    ,'Server Time: '.date('M j, Y, g:ia (O)').'<br/>'
                     ,'</small></div></body></html>'
                 );
                 $mail_message = array_merge($mail_message, $mail_attachments);
@@ -116,19 +131,17 @@ CLASS Contact{
                 }else{
                     $status .=  $error_prefix .$badcommand .$error_suffix;
                 }
-            }else{ // Form is invalid
+            }else{ // Form was submitte, but is invalid.
                 $form_valid = false;
                 $status .= $error_prefix. $badbot. $error_suffix;
             }
-        }else{
+        }else{ // NOT submitted yet...
             $form_posted = false;
-            if( !empty($_SESSION['user']) ){
+            if( ! empty($_SESSION['user']) ){
                 $form_name = $_SESSION['user']['username'];
                 $form_email = $_SESSION['user']['email'];
+                $form_antibot_answer = $antibot_key_1 ? : $_SERVER['HTTP_HOST'];
             }
-            $form_subject = '';
-            $form_message = '';
-            $form_antibot_answer = @$_SESSION['logged_in'] ? @$_SERVER['HTTP_HOST'] : '';
         }
 
         // Render the page.
@@ -165,6 +178,7 @@ CLASS Contact{
                     else{ return true; }
                 }
             //--></script>
+            '.$pre_form_text.'
             <form enctype="multipart/form-data" method="post" style="text-align:left;" class="contact_display" onsubmit="return validateForm(this);"><fieldset>
                 <div style="position:relative;left:-2px;top:-4px;"><small><strong>Email Form</strong> - <em>Fields with * are required.</em></small></div>
                 <div style="clear:both;"></div>

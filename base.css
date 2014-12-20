@@ -15,9 +15,6 @@ a{
     cursor:pointer;
     text-decoration:underline;
 }
-*:hover,*:focus,*:active,*.active{
-    outline-style:none;
-}
 
 /* BORDERS (ALL that lack defaults, everything BUT color. */
 body,header,section,footer,address,blockquote,dd,dl,dt,div,dl,form,fieldset,label,
@@ -39,7 +36,8 @@ address,dl,ol,ul,p{
 }
 pre,fieldset{
     margin:1px auto;
-    padding:1px;
+    padding:5px;
+    border-width:1px;
 }
 h1,h2,h3,h4,h5,h6{
     margin:0;

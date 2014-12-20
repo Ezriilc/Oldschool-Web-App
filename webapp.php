@@ -1,15 +1,15 @@
 <?php
 
+@include_once('Downloader.php');
+
 new WEBAPP;
 return WEBAPP::$content;
 
 class WEBAPP{
-    static
-        $content = 'content.ini'
-        ,$root_dir = '/Oldschool-Web-Kit'
-    ;
+    static $content = 'content.ini';
     function __construct(){
-        $content = './'.static::$content;
+        @session_start();
+        $content = static::$content;
         if( ! $content = $this->load_content($content) ){ die('Content failure.'); }
         $content['page_name'] = $this->pick_a_page($content);
         $content['page'] = & $content['pages'][$content['page_name']];
@@ -76,7 +76,6 @@ class WEBAPP{
                 }
             }
         }
-//var_dump($content);die();
         return $content;
     }
     
@@ -84,14 +83,25 @@ class WEBAPP{
     
     private function pick_a_page($content){
         if( ! empty($_SERVER['REQUEST_URI']) ){
-            $patt = preg_quote(static::$root_dir,'/');
-            if( $request = preg_replace('/^'.$patt.'\//', '', $_SERVER['REQUEST_URI']) ){
+            $request = rawurldecode(preg_replace('/(\?.*)$/', '', $_SERVER['REQUEST_URI']));
+            $root_dir = dirname($_SERVER['PHP_SELF']);
+            if( $root_dir !== '/' ){
+                $root_patt = preg_quote($root_dir,'/');
+                $request = preg_replace('/^'.$root_patt.'\//', '', $request);
+            }
+            if(
+                $request
+                AND $request !== '/'
+            ){
                 foreach( $content['pages'] as $page => $val ){
-                    if( $page === $request ){
+                    if(
+                        $page === $request
+                        OR '/'.$page === $request
+                    ){
                         return $page;
                     }
                 }
-                $uri  = $_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
+                $uri  = $_SERVER['HTTP_HOST'].$root_dir;
                 header('Location: http://'.$uri);
                 exit;
             }
@@ -115,7 +125,10 @@ class WEBAPP{
         $page['head'] = '';
         $page['include'] = '';
         
-        // Automatic page includes.
+        // Includes.
+        if( $page_name !== 'user' ){
+            include('user.php');
+        }
         $inc_file = $page_name.'.php'; // ...that match ?page=
         if( is_readable($inc_file) && !is_dir($inc_file) ){
             $page['include'] .= include($inc_file);
@@ -131,9 +144,9 @@ class WEBAPP{
         }
         if( !empty($page['style']) ){
             $page['head'] .= '
-<style type="text/css"><!--
+<style type="text/css">
     '.$page['style'].'
-//--></style>';
+</style>';
         }
         // JS
         $inc_js_file = $page_name.'.js';
