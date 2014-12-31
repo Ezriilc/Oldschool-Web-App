@@ -97,9 +97,9 @@ WHERE file=:file
             )
         ){ return; }
         if( $basename === $zip_prefix ){
-            $zip_filename = $zip_prefix.$dir.'.zip';
+            $basename = $zip_prefix.$dir.'.zip';
             $zip_obj = new ZipArchive();
-            if( ! $zip_obj->open($zip_filename, ZIPARCHIVE::OVERWRITE) ){
+            if( ! $zip_obj->open($basename, ZIPARCHIVE::OVERWRITE) ){
                 die(get_called_class().': ZIPARCHIVE error.');
             }
             $scandir = scandir($dirname);
@@ -113,7 +113,7 @@ WHERE file=:file
                     && in_array($scan_ext, $types['all'])
                 ){
                     $zip_obj->addFile($scan_pathname, $scan_file);
-                    $pathname = './'.$zip_filename;
+                    $pathname = './'.$basename;
                     $ext = 'zip';
                 }
             }
