@@ -1,14 +1,23 @@
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    
-    ## Protect downloads from direct access.
-    RewriteCond %{REQUEST_URI} /downloads [NC]
-    RewriteRule .* Downloader.php [L]
+RewriteEngine On
 
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule .* index.php [L]
-</IfModule>
+## Redirect old stuff.
+RewriteCond %{QUERY_STRING} page=(.*) [NC]
+RewriteRule (.*) http://%{HTTP_HOST}/%1? [L]
+
+RewriteCond %{REQUEST_URI} /downloads/(.*) [NC]
+RewriteRule (.*) http://%{HTTP_HOST}/_downloads/%1 [R=301,L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule .* index.php [L]
+
+## Protect downloads from direct access.
+RewriteCond %{REQUEST_URI} /_downloads/ [NC,OR]
+RewriteCond %{REQUEST_URI} /users/([^/]+)/([^/]+) [NC]
+RewriteRule ^(.*)$ Downloader.php [L]
+
+RewriteCond %{REQUEST_URI} /users/?$ [NC]
+RewriteRule ^(.*)$ http://%{HTTP_HOST} [R=301,L]
 
 ## Prevent file browsing
 Options -Indexes

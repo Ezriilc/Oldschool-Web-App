@@ -210,7 +210,7 @@ CLASS Contact{
                 <div style="clear:both;"></div>
                 <hr/>
                 <div style="clear:both;">
-                    <label for="antibot" style="display:block;clear:both;">'.$antibot_quest.'</label>
+                    <label for="antibot" style="display:block;clear:both;">'.$antibot_quest.' *</label>
                     <div style="clear:both;"></div>
                     <input type="text" id="antibot" name="antibot" value="'.$form_antibot_answer.'" maxlength="100" style="width:66%;" />
                 </div>

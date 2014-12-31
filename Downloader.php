@@ -29,11 +29,20 @@ CLASS DOWNLOADER{
     }
     
     static public function get_info($pathname){
+        $return = null;
         if( ! static::init_database() ){ return; }
         $user_file_patt = '^.*\/?users\/([^\/]+)\/(.*)$';
         $username = preg_filter('/'.$user_file_patt.'/i', '$1', $pathname);
         $logname = basename($pathname);
         if( $username ){ $logname = $username.'/'.$logname; }
+        
+        $dirname = dirname($pathname);
+        $basename = basename($pathname);
+        $dir = basename($dirname);
+        $name_ext_patt = '/^(.*)\.([^\.\/]+)$/';
+        $name = preg_filter($name_ext_patt,'$1',$basename);
+        $ext = preg_filter($name_ext_patt,'$2',$basename);
+        
         if(
             $stmt = static::$dbcnnx->prepare("
 SELECT * FROM ".static::$downloads_table."
@@ -43,14 +52,25 @@ WHERE file=:file
             AND $stmt->execute()
             AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
         ){
-            return $result;
+            // Download info found.
         }
+        if( empty($result) ){ $result = array(); }
+        foreach( static::$types['image'] as $type ){
+            $image_pathname = './'.$dirname.'/'.$name.'.'.$type;
+            if( is_readable($image_pathname) ){
+                $result['image'] = $image_pathname;
+            }
+        }
+        $text_pathname = './'.$dirname.'/'.$name.'.txt';
+        if( is_readable($text_pathname) ){
+            $result['desc'] = '<pre>'.htmlentities(file_get_contents($text_pathname)).'</pre>';
+        }
+        return $result;
     }
     
     static private function get_download(){
         $zip_prefix = static::$zip_prefix;
         $types = static::$types;
-        $name_ext_patt = '/^(.*)\.([^\.\/]+)$/';
         $request = preg_replace('/(\?.*)$/', '', rawurldecode($_SERVER['REQUEST_URI']));
         $root_dir = dirname($_SERVER['PHP_SELF']);
         if( $root_dir !== '/' ){
@@ -62,6 +82,7 @@ WHERE file=:file
         $dirname = dirname($request);
         $basename = basename($request);
         $dir = basename($dirname);
+        $name_ext_patt = '/^(.*)\.([^\.\/]+)$/';
         $name = preg_filter($name_ext_patt,'$1',$basename);
         $ext = preg_filter($name_ext_patt,'$2',$basename);
         if(
@@ -111,6 +132,7 @@ WHERE file=:file
             $logname = $username.'/'.$logname;
         }
         $mime_type = finfo_file(finfo_open(FILEINFO_MIME_TYPE),$pathname);
+        if( $ext === 'sfs' ){ $mime_type = 'text/plain'; }
         $is_direct = false;
         $is_local = false;
         $is_approved = false;
@@ -125,7 +147,12 @@ WHERE file=:file
                 preg_match('/^'.preg_quote('http://forum.kerbalspaceprogram.com','/').'/i', $_SERVER['HTTP_REFERER'])
             ){ $is_approved = true; }
         }
-        
+        if(
+            preg_match('/hyperedit\/?$/i', $dirname)
+            OR preg_match('/hyperedit\/archives\/?$/i', $dirname)
+        ){
+            $is_approved = true;
+        }
         if(
             ! $username
             AND ! $is_local
@@ -135,7 +162,7 @@ WHERE file=:file
         }
         if(
             $is_local
-            AND $basename === 'ribbons.png'
+            AND preg_match('/^image\//i',$mime_type)
         ){
             // Don't log.
         }else{
@@ -143,7 +170,6 @@ WHERE file=:file
                 die($log);
             }
         }
-var_dump($mime_type);
         if(
             $username
             AND(
@@ -152,15 +178,15 @@ var_dump($mime_type);
         ){
             header( 'Content-Type: '.$mime_type );
         }else{
-            header( 'Content-Description: File Transfer' );
             header( 'Content-Type: application/octet-stream' );
+            header( 'Content-Description: File Transfer' );
             $filename = preg_replace('/;/i', '_', $basename);
                 // No semi-colons inside HTTP headers - it ends the line.
             header( 'Content-Disposition: attachment; filename="'.$filename.'"' );
             header( 'Content-Transfer-Encoding: binary' );
         }
         header( 'Vary:Accept-Encoding' );
-        header( 'Last-Modified:'.date('r',filemtime($pathname)) );
+        header( 'Last-Modified: '.date('r',filemtime($pathname)) );
         header( 'Cache-Control:no-transform,public,max-age:'.static::$cache_time.', s-maxage:'.static::$cache_time );
         header( 'Expires: '.date('r',(time()+static::$cache_time)) );
         header( 'Content-Length: ' .filesize($pathname) );

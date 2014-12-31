@@ -1,22 +1,24 @@
 <?php
 
 new USER;
-$return = '';
+$return1 = '';
+$return2 = '';
+$users = USER::get_users();
+$users = array_reverse($users);
+foreach( $users as $user ){
+    $users_newest = $user;
+    break;
+}
+$return1 .= '<p>Kerbaltek has <strong>'.count($users).'</strong> members all over the planet.</p>';
+
 if( ! empty($_SESSION['logged_in']) ){
-    $users = USER::get_users();
-    $users = array_reverse($users);
-    foreach( $users as $user ){
-        $users_newest = $user;
-        break;
-    }
-    
-    $return .= '
+    $return2 .= '
 <hr/>
 <div>
     <h2>Members</h2>
-    Count: <strong>'.count($users).'</strong>;
-    Newest: <strong>'.$users_newest['username'].'</strong>, <small>joined '.date('l, F j, Y, g:i a (T, \G\M\TP)',$users_newest['joined']).'</small><br/>
+    <small>(Newest first)</small>
     <div class="member_list">
+    <p><strong>'.$users_newest['username'].'</strong> joined '.date('l, F j, Y, g:i a (T, \G\M\TP)',$users_newest['joined']).',</p>
     ';
     foreach($users as $user){
         if(
@@ -24,15 +26,15 @@ if( ! empty($_SESSION['logged_in']) ){
             OR $user['username'] === 'Admin'
         ){ continue; }
         if( empty($first) ){ $first = true; }
-        else{ $return .= ', '; }
-        $return .= $user['username'];
+        else{ $return2 .= ', '; }
+        $return2 .= $user['username'];
     }
-    $return .= '
+    $return2 .= '
     </div>
 </div>';
 }
 
-return USER::$output.$return;
+return $return1.USER::$output.$return2;
 
 class USER{
     static
@@ -398,6 +400,12 @@ ip TEXT NOT NULL PRIMARY KEY
         @header('Location: http://'.$_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']));
         exit('<p><a title="Click to continue." href="http://'.$_SERVER['HTTP_HOST'].preg_replace('/\?.*/i','',$_SERVER['REQUEST_URI']).'">Click here to continue.</a></p>');
     }
+    private function my_hash($inout,$i=9){
+        while($i--){
+            $inout = sha1(md5($inout));
+        }
+        return $inout;
+    }
     private function rand_salt($length=22){
         $chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
         $size = strlen($chars);
@@ -405,12 +413,6 @@ ip TEXT NOT NULL PRIMARY KEY
             $salt .= $chars[rand(0,$size-1)];
         }
         return $salt;
-    }
-    private function my_hash($inout,$i=9){
-        while($i--){
-            $inout = sha1(md5($inout));
-        }
-        return $inout;
     }
     private function do_crypt($string){
         $string = static::$pepper.$string;
@@ -1172,7 +1174,7 @@ LIMIT 1
                             AND $result = $stmt->fetch(PDO::FETCH_ASSOC)
                         )
                     ){
-                        // Username taken.
+                        // Username taken or invalid.
                         $form = '
 <form id="register_form" name="register_form" class="register user" method="post"><fieldset>
     <h3>Choose a different username:</h3>
